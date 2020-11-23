@@ -3,3 +3,5 @@ glue_data/
 .vscode/
 __pycache__/
 save_model/
+model/__pycache__/
+utils/__pycache__/
