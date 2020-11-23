@@ -18,7 +18,7 @@ class Bert(nn.Module):
             sequence_out, pooler_out = self.bert(token_type_ids=token_type, attention_mask=attention_mask, \
                 inputs_embeds=kwargs.get('embed'))
         except:
-            sequence_out, pooler_out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type)[1]
+            sequence_out, pooler_out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type)
         out = sequence_out if self.sequence_label else pooler_out
         out = self.drop_out(out)
         out = self.classifier(out)
