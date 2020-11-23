@@ -30,10 +30,18 @@ parser.add_argument('--max_len', type=int, default=150)
 parser.add_argument('--sample_rate', type=float, default=1.0)
 parser.add_argument('--clip_dataset', action='store_true', help='clip the total dataset to reduce the training time')
 parser.add_argument('--workers', type=int, default=4)
+parser.add_argument('--pad_idx', type=int, default=0)
+
+# mlm task
+parser.add_argument('--mlm_task', action='store_true')
+parser.add_argument('--mask_token_id', type=int, default=103)
+parser.add_argument('--replace_prob', type=float, default=0.8)
+parser.add_argument('--replace_random_token_prob', type=float, default=0.1)
+parser.add_argument('--mask_prob', type=float, default=0.15)
 
 # model
+parser.add_argument('--use_mlm_pretrained_model', action='store_true')
 parser.add_argument('--bert_name', type=str, default='bert-base-uncased')
-parser.add_argument('--bert_type', type=str, default='no_bert', choices=['bert', 'no_bert'])
 parser.add_argument('--num_hidden_layers', type=int, default=4)
 parser.add_argument('--num_attention_heads', type=int, default=4)
 parser.add_argument('--hidden_size', type=int, default=768)
