@@ -14,6 +14,7 @@ from tqdm import trange, tqdm
 from collections import Counter
 from datasets import load_dataset
 from nltk import word_tokenize
+from utils.mlm import get_mlm_data_from_tokens
 
 def init_logger(filename, when='D', backCount=3,
                 fmt='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s'):
@@ -86,6 +87,66 @@ class GlueDataset(Dataset):
 
     def __len__(self):
         return self.data[0].shape[0]
+
+def get_cola_data(tokenizer, data_dir, mode='train'):
+    p = ColaProcessor()
+    data = ColaProcessor.get_train_examples(data_dir=data_dir, mode=mode)
+    input_sent, type_id, label = [], [], []
+    for line in data:
+        sent = ['[CLS]'] + tokenizer.tokenize(line.text_a)
+        input_sent.append([sent])
+        type_id.append([0 for _ in range(sent)])
+        label.append(line.label)
+    return input_sent, type_id, label
+
+data_process_map = {'cola': get_cola_data}
+
+class MLMDatasete(Dataset):
+    def __init__(self, data_dir, task, max_len, bert_name, type='train'):
+        self.tokenizer = BertTokenizer.from_pretrained(bert_name)
+        self.data_dir = data_dir
+        self.mode = mode
+        self.max_len = max_len
+
+        # process data
+        self.data = self.process_raw_data(task)
+
+    def process_raw_data(self):
+        # get input sent from processor
+        input_sent, type_id, label = data_process_map[self.task](self.tokenizer, data_dir, self.mode)
+
+        # construct mask data
+        mlm_input, mlm_pred_token, token_type, atten_mask = [], [], [], []
+        vocab = {v: k for k, v in self.tokenizer.vocab.items()}
+        for sent, tid in zip(input_sent, type_id):
+            mlm_sent, mlm_label = get_mlm_data_from_tokens(sent, self.tokenizer, vocab)
+            mask = [1 for i in range(mlm_sent)]
+
+            # assert all the input is in the same length
+            if len(mlm_sent) > self.max_len:
+                mlm_input.append(mlm_sent[:self.max_len])
+                mlm_pred_token.append(mlm_label[:self.max_len])
+                token_type.append(tid[:self.max_len])
+                atten_mask.append(mask[:self.max_len])
+            else:
+                length = len(mlm_sent)
+                mlm_input.append(mlm_sent + [0 for _ in range(self.max_len - length)])
+                mlm_pred_token.append(mlm_label + [0 for _ in range(self.max_len - length)])
+                token_type.append(tid + [0 for _ in range(self.max_len - length)])
+                atten_mask.append(mask + [0 for _ in range(self.max_len - length)])
+        
+        # convert list to torch.LongTensor
+        mlm_input, mlm_pred_token, token_type, atten_mask = torch.LongTensor(mlm_input), \
+                                                            torch.LongTensor(mlm_pred_token), \
+                                                            torch.LongTensor(token_type), \
+                                                            torch.LongTensor(atten_mask)
+        return (mlm_input, token_type, atten_mask, mlm_pred_token)
+    
+    def __getitem__(self, i):
+        batch = ()
+        for item in self.data[i]:
+            batch += (item, )
+        return batch
 
 class SNLIDataset(Dataset):
     def __init__(self, data_dir, task, max_len, bert_name, bert_type, mode='train'):
@@ -254,5 +315,4 @@ class NormalDataset(Dataset):
 
 
 if __name__ == '__main__':
-    dataset = GlueDataset('../glue_data', 'cola', 100, 'bert-base-uncased')
-    print('For debug use')
+    dataset = MLMDatasete('../glue_data/CoLA', 'cola', 120, 'bert-base-uncased', 'train')

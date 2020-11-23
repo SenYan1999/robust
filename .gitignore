@@ -1,0 +1,5 @@
+log/
+glue_data/
+.vscode/
+__pycache__/
+save_model/

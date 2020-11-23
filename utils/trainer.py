@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from model.perturbation import alum_perturbation, random_perturbation
 from sklearn.metrics import matthews_corrcoef, accuracy_score
 from tqdm import tqdm
+from utils.mlm import get_masked_tokens
 
 class MeanTool:
     def __init__(self):
@@ -146,4 +147,55 @@ class Trainer(object):
         saved_model_name += '_fix_embed' if self.args.adv_fix_embedding else ''
         saved_model_name += '.pt'
         torch.save(state, os.path.join(self.args.save_dir, saved_model_name))
+
+class MLMTrainer(Trainer):
+    def __init__(self, train_dataloader, dev_dataloader, model, optimizer, logger, args):
+        super(MLMTrainer, self).__init__(train_dataloader, dev_dataloader, model, optimizer, logger, args)
+    
+    def train_epoch(self, epoch):
+        self.model.train()
+        pbar = tqdm(total=len(self.train_data))
+        loss_mean_tool = MeanTool()
+        metric_mean_tool = MeanTool()
+        for step, batch in enumerate(self.train_data):
+            # move data to cuda
+            if self.args.gpu != None:
+                batch = list(map(lambda x: x.cuda(), batch))
+            else:
+                batch = list(map(lambda x: x.cuda(self.args.gpu, non_blocking=True), batch))
+            
+            # random mask some positions of the original token
+            batch[0], batch[-1] = get_masked_tokens(batch[1], self.args.mask_token_id, self.args.mask_prob, self.args.replace_prob, self.args.pad_idx)
+
+            # apply model to the input batch
+            logit, embed = self.model(batch)
+            loss_normal = F.nll_loss(F.log_softmax(logit, dim=-1), batch[-1], ignore_index=self.args.pad_idx)
+
+            # now we apply adv perturbation
+            if self.args.adv_train:
+                loss_adv = alum_perturbation(self.model, batch, embed, logit, self.args)
+                loss = loss_normal + loss_adv
+            elif self.args.random_train:
+                loss_random = random_perturbation(self.model, batch, embed, logit, self.args)
+                loss = loss_normal + loss_random
+            else:
+                loss = loss_normal
+            loss.backward()
+
+            # optimize
+            self.optimizer.step()
+
+            # print log information
+            metric_score = calculate_result(self.args.task, logit, batch[-1])
+            metric_mean_tool.update(metric_score, batch[0].shape[0])
+            loss_mean_tool.update(loss.item(), batch[0].shape[0])
+            pbar.update(1)
+            information = 'Epoch: %3d | Loss: %.3f | Metric: %.3f' % (epoch, loss.item(), metric_score)
+            pbar.set_description(information)
+
+            if step % 500 == 0:
+                self.logger.info(information)
+
+    def evaluate_epoch(self, ):
+        pass
     
