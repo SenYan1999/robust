@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from model.perturbation import alum_perturbation, random_perturbation
 from sklearn.metrics import matthews_corrcoef, accuracy_score
 from tqdm import tqdm
-from utils.mlm import get_masked_tokens
 
 class MeanTool:
     def __init__(self):

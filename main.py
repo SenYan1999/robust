@@ -6,41 +6,30 @@ import torch.multiprocessing as mp
 import torch.distributed as dist
 
 from args import args
-from utils import Trainer, GlueDataset, init_logger, SNLIDataset, BertDataset, NormalDataset
+from utils import Trainer, GlueDataset, init_logger, SNLIDataset, BertDataset, NormalDataset, MLMDataset
 from apex import amp
-from model import Bert, PGD, RandomBert, SmartPerturbation, RandomPretrainBert, PretrainBert, BiLSTMModel
+from model import Bert, RandomBert, SmartPerturbation
 from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
 
 def get_model(args, n_vocab=None):
-    if args.bert_type == 'no_bert':
-        model = BiLSTMModel(args.lstm_d_embed, args.lstm_d_hidden, n_vocab, p_drop=args.drop_p)
-    else:
-        model = Bert(args.bert_name, args.num_class, args.bert_type, args.drop_p)
-    
+    model = Bert(args.bert_name, args.num_class, args.drop_p)
     return model
 
-def preprocess(logger):
-    if args.bert_type != 'no_bert':
-        task2dataset = {'SNLI': SNLIDataset, 'Pretrain': BertDataset}
-        Dataset = task2dataset.get(args.task)
-        Dataset = Dataset if Dataset != None else GlueDataset
-
-        # get dataset
-        if(Dataset in [SNLIDataset, GlueDataset]):
-            train_dataset = Dataset(args.data_dir, args.task, args.max_len, args.bert_name, args.bert_type, mode='train')
-            dev_dataset = Dataset(args.data_dir, args.task, args.max_len, args.bert_name, args.bert_type, mode='test')
-        elif(Dataset == BertDataset):
-            train_dataset = Dataset(os.path.join(args.data_dir, 'train.h5'))
-            dev_dataset = Dataset(os.path.join(args.data_dir, 'dev.h5'))
-        else:
-            print('no selected dataset.')
+def get_dataset(args):
+    if args.mlm_task:
+        return MLMDataset
     else:
-        train_dataset = NormalDataset(args.task, args.max_len, mode='train')
-        dev_dataset = NormalDataset(args.task, args.max_len, mode='validation', word2idx=train_dataset.word2idx)
+        return GlueDataset
+
+def preprocess(logger):
+    Dataset = get_dataset(args)
+    train_dataset = Dataset(args.data_dir, args.task, args.max_len, args.bert_name, mode='train')
+    dev_dataset = Dataset(args.data_dir, args.task, args.max_len, args.bert_name, mode='dev')
 
     # save dataset
-    save_path = os.path.join(args.data_dir, args.task, '_'.join([args.bert_type, args.bert_name]))
+    save_path = os.path.join(args.data_dir, args.task, '_'.join([args.bert_name]))
+    save_path = save_path if not args.mlm_task else save_path + '_mlm'
     torch.save(train_dataset, save_path + '_train.pt')
     torch.save(dev_dataset, save_path + '_dev.pt')
 

@@ -17,8 +17,6 @@ def get_mlm_data_from_tokens(tokens, tokenizer, vocab):
                                        key=lambda x: x[0])
     pred_positions = [v[0] for v in pred_positions_and_labels]
     mlm_pred_labels = [v[1] for v in pred_positions_and_labels]
-    print([mlm_input_tokens[i] for i in pred_positions])
-    print(mlm_pred_labels)
     mlm_input_tokens = tokenizer.convert_tokens_to_ids(mlm_input_tokens)
     mlm_pred_labels = tokenizer.convert_tokens_to_ids(mlm_pred_labels)
 

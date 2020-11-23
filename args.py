@@ -42,7 +42,6 @@ parser.add_argument('--mask_prob', type=float, default=0.15)
 # model
 parser.add_argument('--use_mlm_pretrained_model', action='store_true')
 parser.add_argument('--bert_name', type=str, default='bert-base-uncased')
-parser.add_argument('--bert_type', type=str, default='no_bert', choices=['bert', 'no_bert'])
 parser.add_argument('--num_hidden_layers', type=int, default=4)
 parser.add_argument('--num_attention_heads', type=int, default=4)
 parser.add_argument('--hidden_size', type=int, default=768)

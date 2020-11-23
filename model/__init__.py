@@ -1,2 +1,2 @@
-from .bert import Bert, RandomBert, RandomPretrainBert, PretrainBert
+from .bert import Bert, RandomBert
 from .perturbation import SmartPerturbation
