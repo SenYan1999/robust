@@ -12,8 +12,8 @@ from model import Bert, RandomBert, SmartPerturbation
 from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
 
-def get_model(args, n_vocab=None):
-    model = Bert(args.bert_name, args.num_class, args.drop_p)
+def get_model(args):
+    model = Bert(args.bert_name, args.num_class, args.drop_p, sequence_label=args.mlm_task)
     return model
 
 def get_dataset(args):
@@ -52,7 +52,8 @@ def train_job(gpu, args, logger):
         dist.init_process_group(backend='nccl', init_method=args.dist_url, world_size=args.world_size, rank=args.local_rank)
 
     # prepare dataset and dataloader
-    data_path = os.path.join(args.data_dir, args.task, '_'.join([args.bert_type, args.bert_name]))
+    data_path = os.path.join(args.data_dir, args.task, '_'.join([args.bert_name]))
+    data_path = data_path if not args.mlm_task else data_path + '_mlm'
     train_dataset = torch.load(data_path + '_train.pt')
     dev_dataset = torch.load(data_path + '_dev.pt')
 
@@ -60,21 +61,13 @@ def train_job(gpu, args, logger):
         train_size, dev_size = int(len(train_dataset) * 0.1), int(len(dev_dataset) * 0.3)
         train_dataset, _ = torch.utils.data.random_split(train_dataset, [train_size, len(train_dataset) - train_size])
         dev_dataset, _ = torch.utils.data.random_split(dev_dataset, [dev_size, len(dev_dataset) - dev_size])
-
-    try:
-        num_class = train_dataset.num_class
-    except:
-        pass
-
-    try:
-        n_vocab = len(train_dataset.word2idx)
-    except:
-        n_vocab = None
+    
+    args.num_class = args.num_class if not args.mlm_task else len(train_dataset.tokenizer.vocab)
 
     # define model and optimzier
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = get_model(args, n_vocab)
+    model = get_model(args)
     if args.multiprocessing_distributed:
         model.cuda(args.gpu)
         args.batch_size = int(args.batch_size / args.ngpus_per_node)

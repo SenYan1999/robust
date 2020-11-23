@@ -57,9 +57,6 @@ def alum_perturbation(model, batch, embed, logits, args):
     
     return adv_loss
 
-# def parameter_based_perturbation(model, batch, embed, logits, args):
-    
-
 def random_perturbation(model, batch, embed, logits, args):
     noise = generate_noise(embed, batch[1], args.adv_epsilon)
     random_pert_embed = embed.data.detach() + noise
