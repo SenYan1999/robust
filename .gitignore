@@ -5,3 +5,6 @@ __pycache__/
 save_model/
 model/__pycache__/
 utils/__pycache__/
+!save_model/.keep
+!glue_data/.keep
+!log/.keep
