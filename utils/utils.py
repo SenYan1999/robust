@@ -137,7 +137,7 @@ class MLMDataset(Dataset):
             else:
                 length = len(mlm_sent)
                 mlm_input.append(mlm_sent + [0 for _ in range(self.max_len - length)])
-                mlm_pred_token.append(mlm_label + [0 for _ in range(self.max_len - length)])
+                mlm_pred_token.append(mlm_label + [-1 for _ in range(self.max_len - length)])
                 token_type.append(tid + [0 for _ in range(self.max_len - length)])
                 atten_mask.append(mask + [0 for _ in range(self.max_len - length)])
         
