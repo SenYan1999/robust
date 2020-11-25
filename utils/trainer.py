@@ -4,6 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from model.perturbation import alum_perturbation, random_perturbation
+from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import matthews_corrcoef, accuracy_score
 from tqdm import tqdm
 
@@ -44,13 +45,19 @@ def calculate_result(args, pred, truth):
     return result
 
 class Trainer(object):
-    def __init__(self, train_dataloader, dev_dataloader, model, optimizer, logger, args):
+    def __init__(self, train_dataloader, dev_dataloader, model, optimizer, scheduler, logger, args):
         self.train_data = train_dataloader
         self.dev_data = dev_dataloader
         self.args = args
         self.model = model
         self.optimizer = optimizer
+        self.scheduler = scheduler
+
+        # about log
         self.logger = logger
+        mlm_task = '_mlm_task' if args.mlm_task else ''
+        tensorboard_dir = os.path.join(args.log_dir, args.task+mlm_task)
+        self.summary_writer = SummaryWriter(log_dir=tensorboard_dir)
 
     def train_epoch(self, epoch):
         self.model.train()
@@ -81,14 +88,21 @@ class Trainer(object):
 
             # optimize
             self.optimizer.step()
+            if self.scheduler != None:
+                self.scheduler.step()
 
             # print log information
             metric_score = calculate_result(self.args, logit, batch[-1])
             metric_mean_tool.update(metric_score, batch[0].shape[0])
             loss_mean_tool.update(loss.item(), batch[0].shape[0])
-            pbar.update(1)
-            information = 'Epoch: %3d | Loss: %.3f | Metric: %.3f' % (epoch, loss.item(), metric_score)
+            information = 'Epoch: %3d | Loss: %.3f | Metric: %.3f | Lr: %.5f' % (epoch, loss.item(), metric_score, self.optimizer.param_groups[0]['lr'])
             pbar.set_description(information)
+            pbar.update(1)
+
+            # tensorboard
+            self.summary_writer.add_scalar('train/loss', loss.item(), len(self.train_data) * epoch + step)
+            self.summary_writer.add_scalar('train/metric', metric_score, len(self.train_data) * epoch + step)
+            self.summary_writer.add_scalar('train/lr', self.optimizer.param_groups[0]['lr'], len(self.train_data) * epoch + step)
 
             if step % 500 == 0:
                 self.logger.info(information)
@@ -106,7 +120,7 @@ class Trainer(object):
 
         loss_mean_tool = MeanTool()
         metric_mean_tool = MeanTool()
-        for batch in self.dev_data:
+        for step, batch in enumerate(self.dev_data):
             if self.args.gpu != None:
                 batch = list(map(lambda x: x.cuda(), batch))
             else:
@@ -120,6 +134,10 @@ class Trainer(object):
 
             loss_mean_tool.update(loss.item(), batch_size=batch[0].shape[0])
             metric_mean_tool.update(metric_score, batch_size=batch[0].shape[0])
+
+            # tensorboard
+            self.summary_writer.add_scalar('eval/loss', loss.item(), len(self.dev_data) * epoch + step)
+            self.summary_writer.add_scalar('eval/metric', metric_score, len(self.dev_data) * epoch + step)
 
         self.logger.info('*' * 30)
         self.logger.info('Evaluate Result:')

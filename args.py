@@ -19,8 +19,7 @@ parser.add_argument('--saved_model', type=str, default='')
 parser.add_argument('--multiprocessing_distributed', action='store_true')
 parser.add_argument('--ngpus_per_node', type=int, default=2)
 parser.add_argument('--local_rank', type=int, default=0)
-# parser.add_argument('--dist_url', type=str, default='file:///nfsshare/home/yansen/robust/a')
-parser.add_argument('--dist_url', type=str, default='tcp://127.0.0.1:54303')
+parser.add_argument('--dist_url', type=str, default='tcp://127.0.0.1:12345')
 parser.add_argument('--world_size', type=int, default=1)
 
 # data prepare
@@ -62,15 +61,20 @@ parser.add_argument('--adv_step_size', default=1e-3, type=float)
 parser.add_argument('--adv_noise_gamma', default=1e-6, type=float)
 parser.add_argument('--adv_project_type', default='inf', type=str)
 
-# train
-parser.add_argument('--batch_size', type=int, default=128)
-parser.add_argument('--num_epoch', type=int, default=50)
-parser.add_argument('--lr', type=float, default=2e-5)
+# optimizer
+parser.add_argument('--batch_size', type=int, default=256)
+parser.add_argument('--num_epoch', type=int, default=100)
+parser.add_argument('--lr', type=float, default=1e-4)
+parser.add_argument('--adam_epsilon', type=float, default=1e-6)
+parser.add_argument('--adam_beta', type=tuple, default=(0.9, 0.98))
+parser.add_argument('--weight_decay', type=float, default=0.01)
+parser.add_argument('--warmup_proportion', type=float, default=0.06)
 parser.add_argument('--drop_out', type=float, default=0.1)
 parser.add_argument('--print_interval', type=int, default=20)
 
 # save & log
 parser.add_argument('--log_path', type=str, default='log/log.log')
+parser.add_argument('--log_dir', type=str, default='log/')
 parser.add_argument('--save_dir', type=str, default='save_model/')
 parser.add_argument('--tensorboard_path', type=str, default='log/tensorboard')
 

@@ -104,7 +104,23 @@ def get_cola_data(tokenizer, data_dir, mode='train'):
         label.append(line.label)
     return input_sent, type_id, label
 
-data_process_map = {'cola': get_cola_data}
+def get_sst2_data(tokenizer, data_dir, mode='train'):
+    p = Sst2Processor()
+    if mode == 'train':
+        data = p.get_train_examples(data_dir=os.path.join(data_dir, 'sst-2'))
+    elif mode == 'dev':
+        data = p.get_dev_examples(data_dir=os.path.join(data_dir, 'sst-2'))
+    elif mode == 'test':
+        data = p.get_test_examples(data_dir=os.path.join(data_dir, 'sst-2'))
+    input_sent, type_id, label = [], [], []
+    for line in data:
+        sent = ['[CLS]'] + tokenizer.tokenize(line.text_a)
+        input_sent.append(sent)
+        type_id.append([0 for _ in range(len(sent))])
+        label.append(line.label)
+    return input_sent, type_id, label
+
+data_process_map = {'cola': get_cola_data, 'sst-2': get_sst2_data}
 
 class MLMDataset(Dataset):
     def __init__(self, data_dir, task, max_len, bert_name, mode='train'):
@@ -124,7 +140,7 @@ class MLMDataset(Dataset):
         # construct mask data
         mlm_input, mlm_pred_token, token_type, atten_mask = [], [], [], []
         vocab = {v: k for k, v in self.tokenizer.vocab.items()}
-        for sent, tid in tqdm(zip(input_sent, type_id)):
+        for sent, tid in tqdm(zip(input_sent, type_id), total=len(input_sent)):
             mlm_sent, mlm_label = get_mlm_data_from_tokens(sent, self.tokenizer, vocab)
             mask = [1 for i in range(len(mlm_sent))]
 

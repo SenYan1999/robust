@@ -77,7 +77,7 @@ def train_job(gpu, args, logger):
         model = model.to(device)
         model = torch.nn.DataParallel(model)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.98), weight_decay=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=args.adam_beta, weight_decay=args.weight_decay, eps=args.adam_epsilon)
 
     # resume training
     if args.resume:
@@ -96,12 +96,16 @@ def train_job(gpu, args, logger):
     train_dataloader, eval_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=(train_sampler == None), num_workers=args.workers, pin_memory=True, sampler=train_sampler), \
                                         DataLoader(dev_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
 
+    num_training_steps = len(train_dataloader) * args.num_epoch
+    # scheduler = get_linear_schedule_with_warmup(optimizer, num_training_steps * args.warmup_proportion, num_training_steps)
+    scheduler = None
+
     if args.fp16:
         model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
     else:
         pass
 
-    trainer = Trainer(train_dataloader, eval_dataloader, model, optimizer, logger, args)
+    trainer = Trainer(train_dataloader, eval_dataloader, model, optimizer, scheduler, logger, args)
     trainer.train()
 
 if __name__ == '__main__':

@@ -2,29 +2,44 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transformers import BertModel, AlbertModel, BertConfig
+from transformers import BertModel, AlbertModel, BertConfig, BertForMaskedLM
+
+# class Bert(nn.Module):
+#     def __init__(self, bert_name, num_class, drop_out=0.1, sequence_label=False):
+#         super(Bert, self).__init__()
+#         self.bert = BertModel.from_pretrained(bert_name)
+#         self.sequence_label = sequence_label
+#         self.drop_out = nn.Dropout(p=drop_out)
+#         self.classifier = nn.Linear(self.bert.config.hidden_size, num_class)
+
+#     def forward(self, batch, **kwargs):
+#         input_ids, attention_mask, token_type = batch[:3]
+#         try:
+#             sequence_out, pooler_out = self.bert(token_type_ids=token_type, attention_mask=attention_mask, \
+#                 inputs_embeds=kwargs.get('embed'))
+#         except:
+#             sequence_out, pooler_out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type)
+#         out = sequence_out if self.sequence_label else pooler_out
+#         out = self.drop_out(out)
+#         out = self.classifier(out)
+#         embed =  self.bert.embeddings(input_ids=input_ids, token_type_ids=token_type)
+
+#         return out, embed
 
 class Bert(nn.Module):
     def __init__(self, bert_name, num_class, drop_out=0.1, sequence_label=False):
         super(Bert, self).__init__()
-        self.bert = BertModel.from_pretrained(bert_name)
-        self.sequence_label = sequence_label
-        self.drop_out = nn.Dropout(p=drop_out)
-        self.classifier = nn.Linear(self.bert.config.hidden_size, num_class)
+        self.bert = BertForMaskedLM.from_pretrained(bert_name)
 
     def forward(self, batch, **kwargs):
         input_ids, attention_mask, token_type = batch[:3]
         try:
-            sequence_out, pooler_out = self.bert(token_type_ids=token_type, attention_mask=attention_mask, \
-                inputs_embeds=kwargs.get('embed'))
+            sequence_out = self.bert(token_type_ids=token_type, attention_mask=attention_mask, \
+                inputs_embeds=kwargs.get('embed'))[0]
         except:
-            sequence_out, pooler_out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type)
-        out = sequence_out if self.sequence_label else pooler_out
-        out = self.drop_out(out)
-        out = self.classifier(out)
-        embed =  self.bert.embeddings(input_ids=input_ids, token_type_ids=token_type)
+            sequence_out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type)[0]
 
-        return out, embed
+        return sequence_out, None
 
 class RandomBert(nn.Module):
     def __init__(self, config, num_class):
