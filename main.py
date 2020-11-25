@@ -77,7 +77,7 @@ def train_job(gpu, args, logger):
         model = model.to(device)
         model = torch.nn.DataParallel(model)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.98), weight_decay=0.01)
 
     # resume training
     if args.resume:

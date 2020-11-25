@@ -66,7 +66,7 @@ class Trainer(object):
 
             # apply model to the input batch
             logit, embed = self.model(batch)
-            loss_normal = F.nll_loss(F.log_softmax(logit, dim=-1).reshape(-1, logit.shape[-1]), batch[-1].reshape(-1), ignore_index=0)
+            loss_normal = F.nll_loss(F.log_softmax(logit, dim=-1).reshape(-1, logit.shape[-1]), batch[-1].reshape(-1), ignore_index=-1)
 
             # now we apply adv perturbation
             if self.args.adv_train:
@@ -114,7 +114,7 @@ class Trainer(object):
 
             with torch.no_grad():
                 out, _ = self.model(batch)
-            loss = F.nll_loss(F.log_softmax(out, dim=-1).reshape(-1, out.shape[-1]), batch[-1].reshape(-1), ignore_index=0)
+            loss = F.nll_loss(F.log_softmax(out, dim=-1).reshape(-1, out.shape[-1]), batch[-1].reshape(-1), ignore_index=-1)
 
             metric_score = calculate_result(self.args, out, batch[-1])
 
